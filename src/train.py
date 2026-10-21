@@ -27,7 +27,9 @@ def git_info() -> tuple[str, str]:
     if os.environ.get("GIT_COMMIT"):
         return os.environ["GIT_COMMIT"], "false"
     try:
-        dirty = git("status", "--porcelain", "--untracked-files=no") != ""
+        # Tikriname tik įvestis: DVC prieš stage'ą ištrina savo išvestis (run_id.txt), jos ne "nešvarumas"
+        dirty = git("status", "--porcelain", "--untracked-files=no", "--",
+                    "src", "params.yaml", "dvc.yaml", "data/raw.dvc", "requirements-train.txt") != ""
         return git("rev-parse", "--short=8", "HEAD"), str(dirty).lower()
     except Exception:
         return "unknown", "unknown"
