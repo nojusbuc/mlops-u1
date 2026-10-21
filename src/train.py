@@ -8,6 +8,7 @@ from pathlib import Path
 import joblib
 import mlflow
 import mlflow.sklearn
+from mlflow.models import infer_signature
 import pandas as pd
 import yaml
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -85,10 +86,13 @@ def main() -> None:
 
         model.fit(train["text"], train["label"])
 
+        # Aiški signatūra ir priklausomybės: MLflow nebeturi jų spėlioti (lėta, ~50 s)
+        sample = train["text"].head(5)
         mlflow.sklearn.log_model(
             model,
             name="model",
-            input_example=train["text"].head(2).tolist(),
+            signature=infer_signature(sample, model.predict(sample)),
+            pip_requirements=str(ROOT / "requirements-train.txt"),
         )
         (ROOT / "models").mkdir(exist_ok=True)
         joblib.dump(model, ROOT / "models/model.pkl")
