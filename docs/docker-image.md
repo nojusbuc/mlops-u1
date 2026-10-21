@@ -12,7 +12,7 @@ Tag'as `sha-<commit>` susieja vaizdą su kodu (`org.opencontainers.image.revisio
 
 ## Dydis
 
-Matuota vietiniam arm64 vaizdui `sha-22239046` (`du -sh /` konteineryje).
+Matuota vietiniam arm64 vaizdui (`du -sh /` konteineryje).
 
 | | |
 |---|---|

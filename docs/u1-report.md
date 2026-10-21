@@ -2,7 +2,7 @@
 
 ## Kas padaryta
 
-- **R1:** struktūra `src/`, `docker/`, `k8s/`, `docs/`; README su paleidimu nuo nulio (ir `Makefile`); `docs/requirements.md` v1.1: 5 FR, 9 NFR su KPI ir išmatuotomis reikšmėmis, tarp jų reprodukcijos NFR-04.
+- **R1:** struktūra `src/`, `docker/`, `k8s/`, `docs/`; README su paleidimu nuo nulio; `docs/requirements.md` v1.1: 5 FR, 9 NFR su KPI ir išmatuotomis reikšmėmis, tarp jų reprodukcijos NFR-04.
 - **R2:** DVC pipeline'as `prepare → train → evaluate`; `params.yaml` su `prepare` ir `train` skyriais (abu stage'ai priklauso nuo savo parametrų); `dvc.lock` commit'intas po kiekvieno run'o; lokalus DVC remote `../mlops-u1-dvcstore`. 3 run'ai klasterio MLflow su `C` = 0,1 / 10 / 1 (accuracy 0,876 / 0,908 / 0,904). `reproduce.py` atkuria run'ą per 23 s, Δ = 0.
 - **R3:** `docker/Dockerfile.train` (multi-stage, `mlflow-skinny`, UID 1000), rootfs 818 MB, Trivy CRITICAL 0 / HIGH 44 (`docs/docker-image.md`), GHCR tag `sha-<commit>`, amd64 + arm64.
 - **R4:** `kind` klasteris (`k8s/kind-config.yaml`), namespace `mlops-u1`, PostgreSQL (backend store) ir MLflow (artefaktai per serverį į PVC), abu Deployment + Service + PVC; UI `127.0.0.1:5050` per NodePort be port-forward. Ištrynus abu Pod'us run'ai ir artefaktai išliko.

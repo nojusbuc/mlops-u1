@@ -4,7 +4,7 @@ Atkartojamas DVC pipeline'as (`prepare → train → evaluate`) ir savas MLflow 
 Modelis: TF-IDF + logistinė regresija, duomenys `stanfordnlp/imdb`. Išbandyta macOS 26 (Apple Silicon, Docker Desktop).
 
 - **Portai:** MLflow UI ir API http://127.0.0.1:5050 (kind NodePort 30500, tik `127.0.0.1`). Postgres tik klasterio viduje (`postgres:5432`).
-- **Prisijungimai:** MLflow be prisijungimo. Postgres naudotojas ir atsitiktinis slaptažodis tik Kubernetes Secret `postgres-credentials` (sukuria `make secret`, Git'e jų nėra).
+- **Prisijungimai:** MLflow be prisijungimo. Postgres naudotojas ir atsitiktinis slaptažodis tik Kubernetes Secret `postgres-credentials` (sukuriamas 2 žingsnyje, Git'e jų nėra).
 - **Rezultatai:** MLflow eksperimentas `imdb-sentiment`; `metrics.json` (`dvc metrics show`); KPI ir išmatuotos reikšmės `docs/requirements.md`; vaizdas ir Trivy `docs/docker-image.md`.
 
 ## Reikalavimai
@@ -25,15 +25,13 @@ Modelis: TF-IDF + logistinė regresija, duomenys `stanfordnlp/imdb`. Išbandyta 
 brew install kind kubectl uv trivy gh
 ```
 
-Visi žingsniai turi `make` target'ą; žemiau rodomos ir pačios komandos (`Makefile`).
-
 ## Paleidimas nuo nulio
 
 ### 1. Repo ir Python aplinka
 
 ```sh
 git clone https://github.com/nojusbuc/mlops-u1.git && cd mlops-u1
-uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt   # make venv
+uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
 source .venv/bin/activate
 ```
 
@@ -42,28 +40,34 @@ source .venv/bin/activate
 Pirmą kartą siunčiami Postgres ir MLflow vaizdai (~1,5 GB), tai užtrunka kelias minutes. Pabaigoje `curl` atsako `OK`.
 
 ```sh
-kind create cluster --config k8s/kind-config.yaml               # make cluster
-kubectl apply -f k8s/namespace.yaml                             # make secret
+kind create cluster --config k8s/kind-config.yaml
+kubectl apply -f k8s/namespace.yaml
 kubectl -n mlops-u1 create secret generic postgres-credentials \
   --from-literal=POSTGRES_USER=mlflow --from-literal=POSTGRES_DB=mlflow \
   --from-literal=POSTGRES_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
-kubectl apply -k k8s/                                           # make mlflow
+kubectl apply -k k8s/
 kubectl -n mlops-u1 rollout status deploy/mlflow --timeout=300s
 curl -sf http://127.0.0.1:5050/health; echo
 ```
 
-Arba viskas kartu: `make up`. UI: http://127.0.0.1:5050.
+UI: http://127.0.0.1:5050.
 
 ### 3. Duomenys
 
-DVC remote yra lokalus katalogas `../mlops-u1-dvcstore` (šalia repo). Jei jo nėra (naujas kompiuteris), duomenys parsiunčiami iš Hugging Face fiksuotos revizijos ir patikrinama, kad md5 sutampa su `data/raw.dvc`:
+DVC remote yra lokalus katalogas `../mlops-u1-dvcstore` (šalia repo):
 
 ```sh
-make data
-# = dvc pull data/raw.dvc, o nepavykus:
-#   curl ... stanfordnlp/imdb/resolve/e6281661.../plain_text/{train,test}-00000-of-00001.parquet
-#   dvc commit -f data/raw.dvc && git diff --exit-code data/raw.dvc
-dvc push    # užpildo remote katalogą (sukuriamas automatiškai), kad kitą kartą veiktų dvc pull
+dvc pull
+```
+
+Jei remote katalogo nėra (kitas kompiuteris), duomenys parsiunčiami iš Hugging Face fiksuotos revizijos; `git diff` turi būti tuščias, t. y. md5 sutampa su `data/raw.dvc`:
+
+```sh
+curl -fsSL --create-dirs -o "data/raw/#1.parquet" \
+  "https://huggingface.co/datasets/stanfordnlp/imdb/resolve/e6281661ce1c48d982bc483cf8a173c1bbeb5d31/plain_text/{train,test}-00000-of-00001.parquet"
+dvc commit -f data/raw.dvc
+git diff --exit-code data/raw.dvc && echo "duomenys sutampa"
+dvc push
 ```
 
 ### 4. Pipeline: trys run'ai
@@ -99,7 +103,7 @@ python -c "import pandas as pd; a=pd.read_parquet('data/processed/train.parquet'
 Reikia švaraus darbo medžio ir šakos (skriptas grįžta su `git checkout --force`). `<run_id>` matomas MLflow UI arba `models/run_id.txt`.
 
 ```sh
-time python reproduce.py <run_id>          # make reproduce RUN=<run_id>
+time python reproduce.py <run_id>
 ```
 
 ```
@@ -120,26 +124,32 @@ docker run --rm -e MLFLOW_TRACKING_URI=http://host.docker.internal:5050 ghcr.io/
 Savas vaizdas, Trivy ir publikavimas į GHCR (reikia `gh auth refresh -h github.com -s write:packages,read:packages`):
 
 ```sh
-make image      # docker build -f docker/Dockerfile.train --build-arg GIT_COMMIT=<sha> -t mlops-u1/train:sha-<sha> .
-make scan       # Trivy HIGH,CRITICAL -> docs/trivy-train.txt; CRITICAL vartas --exit-code 1
-make publish    # scripts/publish.sh: vartas, docker login su gh token, multi-arch push į ghcr.io/<user>/mlops-u1/train:sha-<sha>
+SHA=$(git rev-parse --short=8 HEAD)
+docker build -f docker/Dockerfile.train --build-arg GIT_COMMIT=$SHA -t mlops-u1/train:sha-$SHA .
+trivy image -q --scanners vuln --severity HIGH,CRITICAL --format table -o docs/trivy-train.txt mlops-u1/train:sha-$SHA
+trivy image -q --scanners vuln --severity CRITICAL --exit-code 1 mlops-u1/train:sha-$SHA
+bash scripts/publish.sh
 ```
+
+`scripts/publish.sh`: CRITICAL vartas, `docker login` su `gh` token'u, amd64 + arm64 vaizdas į `ghcr.io/<user>/mlops-u1/train:sha-<commit>`.
 
 ### 8. Mokymas kaip Kubernetes Job
 
 ConfigMap `training-config` duoda Job'ui MLflow adresą `http://mlflow:5000` (Service vardas klasteryje) ir hiperparametrus.
 
 ```sh
-make job TAG=sha-<sha>    # publikuotas GHCR vaizdas
-make job                  # arba vietinis vaizdas iš `make image`, įkeliamas į kind (kind load docker-image)
+kubectl -n mlops-u1 delete job train --ignore-not-found
+kubectl apply -f k8s/jobs/
+kubectl -n mlops-u1 wait --for=condition=complete job/train --timeout=600s
+kubectl -n mlops-u1 logs job/train
 ```
 
-Sukurto Job'o keisti negalima, todėl `make job` seną ištrina ir sukuria naują. Kitam `C` pakeiskite `k8s/jobs/configmap-training.yaml`.
+Sukurto Job'o keisti negalima, todėl prieš naują paleidimą senas ištrinamas. Kitam `C` pakeiskite `k8s/jobs/configmap-training.yaml`.
 
 ## Išvalymas ir persikrovimas
 
 ```sh
-kind delete cluster --name mlops-u1       # make clean
+kind delete cluster --name mlops-u1
 ```
 
 PVC (`postgres-data`, `mlflow-artifacts`) išlieka ištrynus Pod'us (`kubectl -n mlops-u1 delete pod -l app=mlflow`), bet dingsta kartu su klasteriu.
@@ -151,9 +161,9 @@ Po kompiuterio perkrovimo: `docker start mlops-u1-control-plane`, po minutės Po
 |---|---|
 | `MLFLOW_TRACKING_URI is not set` | Šiame terminale: `export MLFLOW_TRACKING_URI=http://127.0.0.1:5050` |
 | `curl 127.0.0.1:5050` atmeta ryšį | MLflow Pod'as dar kyla (`kubectl -n mlops-u1 get pods`), arba klasteris sukurtas ne su `k8s/kind-config.yaml` (portų susiejimas nustatomas tik kuriant klasterį) |
-| `port is already allocated` kuriant klasterį | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml`, `PORT` `Makefile` ir `MLFLOW_TRACKING_URI` |
+| `port is already allocated` kuriant klasterį | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml` ir `MLFLOW_TRACKING_URI` |
 | `403` / `Invalid Host header` iš MLflow | Kliento host'o nėra `--allowed-hosts` sąraše `k8s/mlflow/deployment-mlflow.yaml` |
-| Job'as `ImagePullBackOff` | GHCR paketas privatus arba tag'as neegzistuoja: padarykite paketą viešą arba `make job` be `TAG` |
+| Job'as `ImagePullBackOff` | GHCR paketas privatus arba tag'as neegzistuoja: padarykite paketą viešą ir patikrinkite `image:` `k8s/jobs/job-train.yaml` |
 | `dvc: command not found` / `ModuleNotFoundError` | Neaktyvuotas venv: `source .venv/bin/activate` |
 | `reproduce.py`: `Uncommitted changes` | Commit'inkite arba `git stash` pakeitimus |
 

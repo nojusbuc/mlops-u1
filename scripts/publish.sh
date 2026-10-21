@@ -10,7 +10,7 @@ REMOTE=ghcr.io/$OWNER/mlops-u1/train:sha-$SHA
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   echo "Uncommitted changes: the image tag would not match its code" >&2; exit 1
 fi
-docker image inspect "$LOCAL" >/dev/null   # pirmiau: make image
+docker image inspect "$LOCAL" >/dev/null
 trivy image -q --scanners vuln --severity CRITICAL --exit-code 1 "$LOCAL"
 
 gh auth token | docker login ghcr.io -u "$OWNER" --password-stdin

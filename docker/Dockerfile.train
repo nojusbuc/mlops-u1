@@ -15,9 +15,7 @@ LABEL org.opencontainers.image.source="https://github.com/nojusbuc/mlops-u1" \
 ENV GIT_COMMIT=$GIT_COMMIT \
     PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    GIT_PYTHON_REFRESH=quiet \
-    MLFLOW_DISABLE_AGENT_HINT=1
+    PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
 COPY requirements-train.txt params.yaml ./

@@ -5,7 +5,6 @@ metadata:
   namespace: mlops-u1
 spec:
   backoffLimit: 1
-  ttlSecondsAfterFinished: 3600
   template:
     metadata:
       labels:
@@ -17,7 +16,6 @@ spec:
         runAsUser: 1000
       containers:
         - name: train
-          # Tik sha-<commit> tag'as, ne latest; `make job` jį pakeičia į esamą
           image: ghcr.io/nojusbuc/mlops-u1/train:sha-b8412c35
           imagePullPolicy: IfNotPresent
           args: ["python", "src/train.py", "--C=$(C)", "--max_features=$(MAX_FEATURES)", "--ngram_max=$(NGRAM_MAX)"]
