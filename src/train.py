@@ -11,6 +11,7 @@ import mlflow.sklearn
 from mlflow.models import infer_signature
 import pandas as pd
 import yaml
+from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -60,12 +61,16 @@ def main() -> None:
     mlflow.set_experiment(os.environ.get("MLFLOW_EXPERIMENT_NAME", "imdb-sentiment"))
     train = pd.read_parquet(ROOT / "data/processed/train.parquet")
 
+    # Įvestis - DataFrame su stulpeliu "text" (ColumnTransformer), kad MLflow pyfunc / serving'as
+    # perduotų tekstą, o ne stulpelių pavadinimus
     model = Pipeline([
-        ("tfidf", TfidfVectorizer(
-            max_features=params["max_features"],
-            ngram_range=(1, params["ngram_max"]),
-            sublinear_tf=True,
-        )),
+        ("tfidf", ColumnTransformer([
+            ("text", TfidfVectorizer(
+                max_features=params["max_features"],
+                ngram_range=(1, params["ngram_max"]),
+                sublinear_tf=True,
+            ), "text"),
+        ])),
         ("clf", LogisticRegression(
             C=params["C"], max_iter=1000, random_state=params["random_seed"],
         )),
@@ -86,12 +91,12 @@ def main() -> None:
             context="training",
         )
 
-        model.fit(train["text"], train["label"])
+        model.fit(train[["text"]], train["label"])
 
         # Aiški signatūra ir priklausomybės: MLflow nebeturi jų spėlioti (lėta).
         # cloudpickle vietoj numatytojo skops: skops TF-IDF žodyną rašo ~40 s, pickle <1 s.
         # Pickle krauna tik mūsų pačių modelius, todėl tai priimtina.
-        sample = train["text"].head(5)
+        sample = train[["text"]].head(5)
         mlflow.sklearn.log_model(
             model,
             name="model",

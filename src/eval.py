@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> None:
     model = joblib.load(ROOT / "models/model.pkl")
     test = pd.read_parquet(ROOT / "data/processed/test.parquet")
-    preds = model.predict(test["text"])
+    preds = model.predict(test[["text"]])
     y = test["label"]
 
     metrics = {
