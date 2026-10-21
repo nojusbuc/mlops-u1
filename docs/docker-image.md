@@ -2,8 +2,9 @@
 
 | | |
 |---|---|
-| Vaizdas | `ghcr.io/nojusbuc/mlops-u1/train:sha-PENDING` (laukia publikavimo) |
-| Digest | PENDING |
+| Vaizdas | `ghcr.io/nojusbuc/mlops-u1/train:sha-5890ce7d` (viešas) |
+| Commit | `5890ce7d` |
+| Digest | `sha256:9c11968e4594b6d193eee89fd67875b44c7e6a853c24798960b88894e4f5e7ce` |
 | Platformos | linux/amd64, linux/arm64 |
 | Bazė | `python:3.12.15-slim-trixie` (Debian 13) |
 | Dockerfile | [`docker/Dockerfile.train`](../docker/Dockerfile.train) |
@@ -12,7 +13,7 @@ Tag'as `sha-<commit>` susieja vaizdą su kodu (`org.opencontainers.image.revisio
 
 ## Dydis
 
-Matuota vietiniam arm64 vaizdui (`du -sh /` konteineryje).
+Matuota vaizdui `sha-5890ce7d` (arm64) (`du -sh /` konteineryje).
 
 | | |
 |---|---|
