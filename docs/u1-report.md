@@ -22,4 +22,4 @@ E1 (autentifikacija), E3 (Terraform), E4 (GCS remote), E5 (GPU: Apple Silicon ne
 
 ## Kiek laiko užtruko
 
-~4 val. (su DI asistentu).
+~6 val, dalinai su Claude'u
