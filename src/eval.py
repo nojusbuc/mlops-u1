@@ -1,4 +1,3 @@
-"""evaluate: metrikos skaičiuojamos tik čia -> metrics.json + tas pats MLflow run'as."""
 import json
 from pathlib import Path
 
@@ -25,7 +24,6 @@ def main() -> None:
     (ROOT / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
     print(json.dumps(metrics, indent=2))
 
-    # Metrikos rašomos į mokymo run'ą; nepavykus - klaida, ne tylus praleidimas
     run_id = (ROOT / "models/run_id.txt").read_text().strip()
     client = mlflow.MlflowClient()
     for key, value in metrics.items():

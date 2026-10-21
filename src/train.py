@@ -1,4 +1,3 @@
-"""train: TF-IDF + LogisticRegression, run'as registruojamas klasterio MLflow."""
 import argparse
 import os
 import subprocess
@@ -24,11 +23,9 @@ def git(*args: str) -> str:
 
 
 def git_info() -> tuple[str, str]:
-    # Docker vaizde .git nėra, todėl commit'as ateina iš GIT_COMMIT build arg
     if os.environ.get("GIT_COMMIT"):
         return os.environ["GIT_COMMIT"], "false"
     try:
-        # Tikriname tik įvestis: DVC prieš stage'ą ištrina savo išvestis (run_id.txt), jos ne "nešvarumas"
         dirty = git("status", "--porcelain", "--untracked-files=no", "--",
                     "src", "params.yaml", "dvc.yaml", "data/raw.dvc", "requirements-train.txt") != ""
         return git("rev-parse", "--short=8", "HEAD"), str(dirty).lower()
@@ -47,7 +44,6 @@ def main() -> None:
     if not os.environ.get("MLFLOW_TRACKING_URI"):
         sys.exit("MLFLOW_TRACKING_URI is not set. Point it at the cluster MLflow, e.g. http://127.0.0.1:5050")
 
-    # params.yaml reikšmės; CLI argumentai (k8s Job) jas perrašo
     params = yaml.safe_load((ROOT / "params.yaml").read_text())["train"]
     parser = argparse.ArgumentParser()
     parser.add_argument("--C", type=float)
@@ -61,8 +57,6 @@ def main() -> None:
     mlflow.set_experiment(os.environ.get("MLFLOW_EXPERIMENT_NAME", "imdb-sentiment"))
     train = pd.read_parquet(ROOT / "data/processed/train.parquet")
 
-    # Įvestis - DataFrame su stulpeliu "text" (ColumnTransformer), kad MLflow pyfunc / serving'as
-    # perduotų tekstą, o ne stulpelių pavadinimus
     model = Pipeline([
         ("tfidf", ColumnTransformer([
             ("text", TfidfVectorizer(
@@ -93,9 +87,6 @@ def main() -> None:
 
         model.fit(train[["text"]], train["label"])
 
-        # Aiški signatūra ir priklausomybės: MLflow nebeturi jų spėlioti (lėta).
-        # cloudpickle vietoj numatytojo skops: skops TF-IDF žodyną rašo ~40 s, pickle <1 s.
-        # Pickle krauna tik mūsų pačių modelius, todėl tai priimtina.
         sample = train[["text"]].head(5)
         mlflow.sklearn.log_model(
             model,

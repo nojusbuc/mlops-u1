@@ -1,4 +1,4 @@
-"""Atkuria istorinį MLflow run'ą: python reproduce.py <run_id> [--tolerance 0.005]
+"""Atkuria istorinį run'ą: python reproduce.py <run_id> [--tolerance 0.005]
 
 Run'o git_commit -> tas pats kodas, params.yaml ir dvc.lock; dvc_raw_md5 -> tie patys duomenys.
 Tada dvc repro --force ir metrikų palyginimas su originalu.
@@ -32,7 +32,6 @@ def main() -> None:
     args = parser.parse_args()
     started = time.time()
 
-    # Skriptas baigiasi git checkout --force, todėl neleidžiame prarasti necommit'intų pakeitimų
     if git("status", "--porcelain", "--untracked-files=no"):
         sys.exit("Uncommitted changes: commit or stash them first")
     branch = git("rev-parse", "--abbrev-ref", "HEAD")
@@ -57,7 +56,6 @@ def main() -> None:
         if md5 != tags.get("dvc_raw_md5"):
             sys.exit(f"Data at {commit} is {md5}, but the run used {tags.get('dvc_raw_md5')}")
 
-        # params.yaml šiame commit'e turi sutapti su run'o parametrais (lyginame, netaisome)
         train_params = yaml.safe_load((ROOT / "params.yaml").read_text())["train"]
         diff = {k: (str(v), original.data.params.get(k)) for k, v in train_params.items()
                 if str(v) != original.data.params.get(k)}
@@ -76,7 +74,6 @@ def main() -> None:
             print(f"{key}: original={original.data.metrics[key]:.4f} "
                   f"reproduced={reproduced[key]:.4f} delta={delta:.4f}")
     finally:
-        # Grąžiname šaką ir jos duomenis/modelius, kad darbo medis liktų kaip prieš paleidimą
         sh("git", "checkout", "--quiet", "--force", branch)
         sh("dvc", "checkout", "--quiet", "--force")
 
