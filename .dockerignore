@@ -1,0 +1,6 @@
+*
+!requirements-train.txt
+!src/
+!params.yaml
+!data/processed/
+!data/raw.dvc
