@@ -86,13 +86,16 @@ def main() -> None:
 
         model.fit(train["text"], train["label"])
 
-        # Aiški signatūra ir priklausomybės: MLflow nebeturi jų spėlioti (lėta, ~50 s)
+        # Aiški signatūra ir priklausomybės: MLflow nebeturi jų spėlioti (lėta).
+        # cloudpickle vietoj numatytojo skops: skops TF-IDF žodyną rašo ~40 s, pickle <1 s.
+        # Pickle krauna tik mūsų pačių modelius, todėl tai priimtina.
         sample = train["text"].head(5)
         mlflow.sklearn.log_model(
             model,
             name="model",
             signature=infer_signature(sample, model.predict(sample)),
             pip_requirements=str(ROOT / "requirements-train.txt"),
+            serialization_format="cloudpickle",
         )
         (ROOT / "models").mkdir(exist_ok=True)
         joblib.dump(model, ROOT / "models/model.pkl")
