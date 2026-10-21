@@ -1,0 +1,31 @@
+# Mokymo vaizdas: python src/train.py log'ina į MLFLOW_TRACKING_URI nurodytą (klasterio) MLflow.
+FROM python:3.12.15-slim-trixie AS base
+
+# builder: priklausomybės į atskirą venv, kad runtime stage'e neliktų pip cache ir build įrankių
+FROM base AS builder
+COPY requirements-train.txt /tmp/
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-train.txt
+
+FROM base AS runtime
+# .git į vaizdą nepatenka, todėl commit'as perduodamas build metu (tag'as sha-<commit>)
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.source="https://github.com/nojusbuc/mlops-u1" \
+      org.opencontainers.image.revision="$GIT_COMMIT"
+ENV GIT_COMMIT=$GIT_COMMIT \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    GIT_PYTHON_REFRESH=quiet \
+    MLFLOW_DISABLE_AGENT_HINT=1
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+COPY requirements-train.txt params.yaml ./
+COPY src/ ./src/
+COPY data/raw.dvc ./data/
+# Paruošti duomenys įdedami į vaizdą: k8s Job'as nepasiekia lokalaus DVC remote
+COPY data/processed/ ./data/processed/
+RUN useradd --create-home --uid 1000 mluser \
+    && mkdir -p /app/models && chown mluser:mluser /app/models
+USER 1000
+CMD ["python", "src/train.py"]
