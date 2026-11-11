@@ -145,6 +145,7 @@ bash scripts/publish.sh
 ```
 
 `scripts/publish.sh`: CRITICAL vartas, `docker login` su `gh` token'u, amd64 + arm64 vaizdas į `ghcr.io/<user>/mlops-u1/train:sha-<commit>`.
+Inferencijos vaizdas (`docker/Dockerfile.serve`) publikuojamas taip pat: `docker build -f docker/Dockerfile.serve ... -t mlops-u1/serve:sha-$SHA .`, tada `bash scripts/publish.sh serve`.
 
 ### 8. Mokymas kaip Kubernetes Job
 
@@ -158,6 +159,27 @@ kubectl -n mlops-u1 logs job/train
 ```
 
 Sukurto Job'o keisti negalima, todėl prieš naują paleidimą senas ištrinamas. Kitam `C` pakeiskite `k8s/jobs/configmap-training.yaml`.
+
+### 9. Inferencijos API
+
+FastAPI servisas (`src/serve/app.py`) paleidimo metu iš MLflow užsikrauna `imdb-sentiment@champion` ir turi du endpoint'us: `GET /health` (rodo modelio versiją) ir `POST /predict`. Champion nustatomas su `python scripts/promote.py`.
+
+```sh
+kubectl apply -f k8s/serving/
+kubectl -n mlops-u1 get pods
+kubectl -n mlops-u1 port-forward svc/inference 8080:80
+```
+
+Kitame terminale:
+
+```sh
+curl http://127.0.0.1:8080/health
+curl -X POST http://127.0.0.1:8080/predict -H "Content-Type: application/json" -d '{"texts": ["Great movie!", "Waste of time"]}'
+```
+
+Modelis užkraunamas tik paleidžiant, todėl pakeitus `@champion` API reikia perkrauti: `kubectl -n mlops-u1 rollout restart deployment/inference`.
+
+Apkrovos testas (port-forward turi veikti): `python scripts/load_test.py`. Rezultatai: [docs/load-test.md](docs/load-test.md).
 
 ## Išvalymas ir persikrovimas
 
@@ -178,6 +200,8 @@ Po kompiuterio perkrovimo: `docker start mlops-u1-control-plane`, po minutės Po
 | `port is already allocated` kuriant klasterį     | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml` ir `MLFLOW_TRACKING_URI`                                                                              |
 | `403` / `Invalid Host header` iš MLflow          | Kliento host'o nėra `--allowed-hosts` sąraše `k8s/mlflow/deployment-mlflow.yaml`                                                                                 |
 | Job'as `ImagePullBackOff`                        | GHCR paketas privatus arba tag'as neegzistuoja: padarykite paketą viešą ir patikrinkite `image:` `k8s/jobs/job-train.yaml`                                       |
+| `inference` Pod'as `ImagePullBackOff`           | GHCR paketas `mlops-u1/serve` privatus: padarykite jį viešą ir patikrinkite `image:` `k8s/serving/deployment-inference.yaml` |
+| `inference` Pod'as lieka `0/1`                    | Žr. `kubectl -n mlops-u1 logs deployment/inference`: dažniausiai nenustatytas `@champion` (`python scripts/promote.py`) arba nėra Secret `mlflow-credentials` |
 | `dvc: command not found` / `ModuleNotFoundError` | Neaktyvuotas venv: `source .venv/bin/activate`                                                                                                                   |
 | `reproduce.py`: `Uncommitted changes`            | Commit'inkite arba `git stash` pakeitimus                                                                                                                        |
 
