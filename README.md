@@ -242,7 +242,7 @@ Testai MLflow nereikia: API testas vietoj `load_champion` naudoja netikrą model
 
 Reikia: runner'is paleistas (`cd ~/actions-runner && ./run.sh`) ir repo secret'ai `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD` (Settings → Secrets and variables → Actions).
 
-Paleidimai: žalias CI _[nuoroda]_, žalias CD _[nuoroda]_, raudonas CD _[nuoroda]_.
+Paleidimai: [žalias CI](https://github.com/nojusbuc/mlops-u1/actions/runs/43101766841), [žalias CD](https://github.com/nojusbuc/mlops-u1/actions/runs/43103153565), [raudonas CD](https://github.com/nojusbuc/mlops-u1/actions/runs/43105940052).
 
 Raudonas paleidimas (vartas blokuoja deploy):
 

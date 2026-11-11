@@ -18,16 +18,16 @@
   Deployment (1 replika, readiness ir liveness `/health`, ne root) + ClusterIP Service `inference`, prieiga per
   `port-forward`. Apkrovos testas: p95 13,4 ms (`docs/load-test.md`).
 - **R5:** `.github/workflows/ci.yml`: `test` (ruff, pytest: 7 testai, API su netikru modeliu) → `build` (serve vaizdas
-  amd64 + arm64 į GHCR `sha-<commit>`, tik po sėkmingų testų). Žalias run'as: _[nuoroda]_.
+  amd64 + arm64 į GHCR `sha-<commit>`, tik po sėkmingų testų). Žalias run'as: [43101766841](https://github.com/nojusbuc/mlops-u1/actions/runs/43101766841).
 - **R6:** `.github/workflows/cd.yml` self-hosted runner'yje (Mac, pasiekia kind ir MLflow): pytest → `dvc repro` →
   `scripts/quality_gate.py` → `promote.py` → manifestas (vaizdo tag'as, `model-version` anotacija) → `kubectl apply` →
-  `/health`. Žalias: _[nuoroda]_, raudonas: _[nuoroda]_.
+  `/health`. Žalias: [43103153565](https://github.com/nojusbuc/mlops-u1/actions/runs/43103153565), raudonas: [43105940052](https://github.com/nojusbuc/mlops-u1/actions/runs/43105940052).
 - **R7:** `docs/requirements.md` v1.6: nauji FR-06–FR-11, NFR-10–NFR-15 su išmatuotomis reikšmėmis.
 
 Ekrano nuotraukos (`docs/img/`): [mokymosi kreivė](img/train-metrics.png), [sistemos metrikos](img/system-metrics.png),
-_[HPO medis]_, [`@champion`](img/registry-champion.png), [Job `Complete`](img/job-complete.png),
+[`@champion`](img/registry-champion.png), [Job `Complete`](img/job-complete.png),
 [Job run'as UI](img/job-run.png), [`/predict`](img/api-predict.png), [k8s ištekliai](img/k8s-serving.png),
-_[CI žalias]_, _[CD žalias]_, _[CD raudonas]_, _[rollback]_.
+[CI žalias](img/ci_green.png), [CD žalias](img/cd_green.png), [CD žalias, žingsniai](img/cd_green_detail.png), [vartas PASS](img/cd_green_gate.png), [`@champion` v3](img/cd_promote_champ.png), [CD raudonas](img/cd_red_run.png).
 
 ## Architektūra
 
@@ -51,9 +51,9 @@ publikuojamas `scripts/publish.sh`.
 | ---------------------------- | ------------------------------------------------------------------ |
 | HPO (10 bandymų)             | 65 s, geriausias `val_accuracy` 0,9130                             |
 | Mokymas                      | 45 s `dvc repro`, 110 s k8s Job                                    |
-| Žalias CD paleidimas         | _[R6: trukmė, accuracy]_                                           |
-| Raudonas CD paleidimas       | _[R6: trukmė, sustojo ties vartu]_                                 |
-| Rollback                     | _[R6: trukmė]_                                                     |
+| Žalias CD paleidimas         | 2 min 38 s (`dvc repro` ~72 s), accuracy 0,9065, deploy v3                                           |
+| Raudonas CD paleidimas       | 2 min 12 s, sustojo ties vartu (0,9065 < 0,99)                                 |
+| Rollback                     | _[parodoma gynime]_                                                     |
 | p50 / p95 / p99              | 4,1 / 13,4 / 23,1 ms (200 nuoseklių užklausų, per `port-forward`)  |
 | Pralaidumas                  | 173 užklausų/s, vienas klientas, 0 klaidų                          |
 | Modelis                      | 2,3 MB (`model.pkl`)                                               |
@@ -61,25 +61,23 @@ publikuojamas `scripts/publish.sh`.
 
 ## Žalias, raudonas ir rollback
 
-_[R6: žalio CD paleidimo nuoroda ir ištraukos: quality gate PASS, promote, smoke test]_
+Žalias CD: [43103153565](https://github.com/nojusbuc/mlops-u1/actions/runs/43103153565)
 
 ```
-[R6: gate: accuracy ... >= 0.8800 -> PASS]
-[R6: imdb-sentiment@champion -> version N (run ...)]
-[R6: {"status":"ok", ... "version":"N" ...}]
+gate: accuracy 0.9065 >= 0.8800 -> PASS
+imdb-sentiment@champion -> version 3 (run 3f572a45af14490a8141812e0c4c77a9)
+{"status":"ok","name":"imdb-sentiment","alias":"champion","version":"3","run_id":"3f572a45af14490a8141812e0c4c77a9"}
 ```
 
-_[R6: raudono CD paleidimo nuoroda (`gate.min_accuracy: 0.99`): FAIL, promote / manifestas / deploy praleisti, `/health` liko N]_
+Raudonas CD (`gate.min_accuracy: 0.99`): [43105940052](https://github.com/nojusbuc/mlops-u1/actions/runs/43105940052). Vartas FAIL, promote / manifestas / deploy / smoke test praleisti, `@champion` liko v3.
+
+![cd red](img/cd_red_run.png)
 
 ```
-[R6: gate: accuracy ... < 0.9900 -> FAIL]
+gate: accuracy 0.9065 < 0.9900 -> FAIL
 ```
 
-_[R6: rollback: `promote.py --version N` + `rollout restart`, `/health` prieš ir po]_
-
-```
-[R6: rollback terminalo išvestis]
-```
+Rollback parodomas gynime: `python scripts/promote.py --version 2` → `kubectl -n mlops-u1 rollout restart deployment/inference` → `/health` rodo v2.
 
 ## Kas neveikė / ką teko spręsti
 

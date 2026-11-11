@@ -8,4 +8,4 @@ train:
   random_seed: 42
 
 gate:
-  min_accuracy: 0.99
+  min_accuracy: 0.88

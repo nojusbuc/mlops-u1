@@ -45,7 +45,7 @@ Hiperparametrai (`C` 20,5, `max_features` 50 000, `ngram_max` 2) parinkti Optuna
 | --- | --- | --- | --- | --- |
 | NFR-01 | Kokybė | Modelis testinėje imtyje geresnis už atsitiktinį spėjimą | accuracy ≥ 0,85 ir F1 ≥ 0,85 (`metrics.json`) | U1: C = 0,1 / 1 / 10: accuracy 0,8762 / 0,9036 / 0,9078. U2 (C 20,5, bigramos): accuracy 0,9065, F1 0,9075 |
 | NFR-02 | Vertinimo validumas | Tas pats atsiliepimas nepatenka į abi imtis | 0 bendrų tekstų tarp `train` ir `test` (README patikra) | 0 (be dublikatų šalinimo būtų galimi 418) |
-| NFR-03 | Našumas | Mokymo trukmė CPU | MLflow run'o trukmė ≤ 2 min | 45 s (`dvc repro`, su mokymosi kreive ir registravimu); k8s Job 110 s; CD `dvc repro` žingsnis: _[R6]_ |
+| NFR-03 | Našumas | Mokymo trukmė CPU | MLflow run'o trukmė ≤ 2 min | 45 s (`dvc repro`, su mokymosi kreive ir registravimu); k8s Job 110 s; CD `dvc repro` žingsnis ~72 s |
 | NFR-04 | Atkartojamumas | Istorinis run'as atkuriamas `python reproduce.py <run_id>` | ≤ 2 min; \|Δaccuracy\|, \|ΔF1\| ≤ 0,005 | 23 s, Δ = 0,0000 abiem (`45659219` atkurtas kaip `d8ebe1c0`) |
 | NFR-05 | Patikimumas | MLflow duomenys išlieka perkūrus Pod'us | 0 prarastų run'ų ir artefaktų po `kubectl delete pod -l app=mlflow` ir `-l app=postgres` | 4/4 run'ai ir artefaktai išliko; modelis įkeliamas iš MLflow |
 | NFR-06 | Saugumas | MLflow su prisijungimu, nepasiekiamas iš tinklo; paslapčių nėra Git | basic auth (be slaptažodžio 401); klausosi tik `127.0.0.1:5050`; 0 slaptažodžių Git istorijoje (`git log -p \| grep`) | basic auth įjungtas; tik `127.0.0.1:5050`; slaptažodžiai tik Secret `mlflow-credentials` ir GitHub repo secret'uose, Git istorijoje 0 |
@@ -56,8 +56,8 @@ Hiperparametrai (`C` 20,5, `max_features` 50 000, `ngram_max` 2) parinkti Optuna
 | NFR-11 | Našumas | API pralaidumas | ≥ 50 užklausų/s, vienas klientas, nuosekliai | **173 užklausų/s**, 0 klaidų iš 200 |
 | NFR-12 | Dydis | Modelio artefakto dydis | `model.pkl` ≤ 50 MB (MLflow artefaktai) | **2,3 MB** (v1, `@champion`) |
 | NFR-13 | Dydis | Inferencijos vaizdas | rootfs ≤ 1 GB | 780 MB rootfs (`docker images`: 1,05 GB) |
-| NFR-14 | Kokybės vartas | Modelis žemiau slenksčio neįdiegiamas | `accuracy ≥ gate.min_accuracy` (0,88, `params.yaml`); raudonas CD paleidimas neatlieka deploy | žalias: _[R6: accuracy, run nuoroda]_; raudonas (0,99): _[R6: FAIL, run nuoroda]_ |
-| NFR-15 | Patikimumas | Rollback trukmė | ankstesnė versija aptarnaujama ≤ 2 min po `promote.py` + `rollout restart` | _[R6: trukmė]_ |
+| NFR-14 | Kokybės vartas | Modelis žemiau slenksčio neįdiegiamas | `accuracy ≥ gate.min_accuracy` (0,88, `params.yaml`); raudonas CD paleidimas neatlieka deploy | žalias: 0,9065 ≥ 0,88, deploy v3 ([run](https://github.com/nojusbuc/mlops-u1/actions/runs/43103153565)); raudonas (0,99): FAIL, deploy praleistas ([run](https://github.com/nojusbuc/mlops-u1/actions/runs/43105940052)) |
+| NFR-15 | Patikimumas | Rollback trukmė | ankstesnė versija aptarnaujama ≤ 2 min po `promote.py` + `rollout restart` | _[matuojama gynime]_ |
 
 ## 4. Keitimo istorija
 
