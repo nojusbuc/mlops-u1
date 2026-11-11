@@ -12,14 +12,14 @@ Modelis: TF-IDF + logistinė regresija, duomenys `stanfordnlp/imdb`. Išbandyta 
 - Docker su ≥ 6 GB RAM (MLflow ≈ 1,7 GiB, Postgres ≈ 50 MiB, kind mazgas).
 - Laisvas `5050` portas (`5000` macOS užima AirPlay Receiver).
 
-| Įrankis | Versija |
-|---|---|
-| Docker Desktop | 28.5 |
-| kind | 0.33.0 |
-| kubectl | 1.34 |
-| uv (Python 3.12 parsiunčia pats) | 0.10 |
-| DVC, MLflow | 3.67.1, 3.17.2 (`requirements.txt`) |
-| Trivy, gh | 0.76, 2.76 (tik vaizdo publikavimui) |
+| Įrankis                          | Versija                              |
+| -------------------------------- | ------------------------------------ |
+| Docker Desktop                   | 28.5                                 |
+| kind                             | 0.33.0                               |
+| kubectl                          | 1.34                                 |
+| uv (Python 3.12 parsiunčia pats) | 0.10                                 |
+| DVC, MLflow                      | 3.67.1, 3.17.2 (`requirements.txt`)  |
+| Trivy, gh                        | 0.76, 2.76 (tik vaizdo publikavimui) |
 
 ```sh
 brew install kind kubectl uv trivy gh
@@ -157,17 +157,23 @@ Po kompiuterio perkrovimo: `docker start mlops-u1-control-plane`, po minutės Po
 
 ## Dažnos klaidos
 
-| Klaida | Priežastis ir sprendimas |
-|---|---|
-| `MLFLOW_TRACKING_URI is not set` | Šiame terminale: `export MLFLOW_TRACKING_URI=http://127.0.0.1:5050` |
-| `curl 127.0.0.1:5050` atmeta ryšį | MLflow Pod'as dar kyla (`kubectl -n mlops-u1 get pods`), arba klasteris sukurtas ne su `k8s/kind-config.yaml` (portų susiejimas nustatomas tik kuriant klasterį) |
-| `port is already allocated` kuriant klasterį | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml` ir `MLFLOW_TRACKING_URI` |
-| `403` / `Invalid Host header` iš MLflow | Kliento host'o nėra `--allowed-hosts` sąraše `k8s/mlflow/deployment-mlflow.yaml` |
-| Job'as `ImagePullBackOff` | GHCR paketas privatus arba tag'as neegzistuoja: padarykite paketą viešą ir patikrinkite `image:` `k8s/jobs/job-train.yaml` |
-| `dvc: command not found` / `ModuleNotFoundError` | Neaktyvuotas venv: `source .venv/bin/activate` |
-| `reproduce.py`: `Uncommitted changes` | Commit'inkite arba `git stash` pakeitimus |
+| Klaida                                           | Priežastis ir sprendimas                                                                                                                                         |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MLFLOW_TRACKING_URI is not set`                 | Šiame terminale: `export MLFLOW_TRACKING_URI=http://127.0.0.1:5050`                                                                                              |
+| `curl 127.0.0.1:5050` atmeta ryšį                | MLflow Pod'as dar kyla (`kubectl -n mlops-u1 get pods`), arba klasteris sukurtas ne su `k8s/kind-config.yaml` (portų susiejimas nustatomas tik kuriant klasterį) |
+| `port is already allocated` kuriant klasterį     | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml` ir `MLFLOW_TRACKING_URI`                                                                              |
+| `403` / `Invalid Host header` iš MLflow          | Kliento host'o nėra `--allowed-hosts` sąraše `k8s/mlflow/deployment-mlflow.yaml`                                                                                 |
+| Job'as `ImagePullBackOff`                        | GHCR paketas privatus arba tag'as neegzistuoja: padarykite paketą viešą ir patikrinkite `image:` `k8s/jobs/job-train.yaml`                                       |
+| `dvc: command not found` / `ModuleNotFoundError` | Neaktyvuotas venv: `source .venv/bin/activate`                                                                                                                   |
+| `reproduce.py`: `Uncommitted changes`            | Commit'inkite arba `git stash` pakeitimus                                                                                                                        |
 
 ## Duomenys ir licencija
 
-- **Duomenys:** Maas, A. L., Daly, R. E., Pham, P. T., Huang, D., Ng, A. Y., & Potts, C. (2011). Learning Word Vectors for Sentiment Analysis. *ACL 2011*. Gauta per Hugging Face `stanfordnlp/imdb`, revizija `e6281661ce1c48d982bc483cf8a173c1bbeb5d31`. Naudojama mokymosi tikslais.
+- **Duomenys:** Maas, A. L., Daly, R. E., Pham, P. T., Huang, D., Ng, A. Y., & Potts, C. (2011). Learning Word Vectors for Sentiment Analysis. _ACL 2011_. Gauta per Hugging Face `stanfordnlp/imdb`, revizija `e6281661ce1c48d982bc483cf8a173c1bbeb5d31`. Naudojama mokymosi tikslais.
 - **Kodas:** MIT, žr. [LICENSE](LICENSE). Rašyta kartu su Claude.
+
+metric screenshots:
+
+![alt text](image.png)
+
+![alt text](image-1.png)
