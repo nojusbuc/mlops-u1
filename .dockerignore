@@ -1,5 +1,6 @@
 *
 !requirements-train.txt
+!requirements-serve.txt
 !src/
 !params.yaml
 !data/processed/

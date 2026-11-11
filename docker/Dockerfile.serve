@@ -1,0 +1,22 @@
+FROM python:3.12.15-slim-trixie AS base
+
+FROM base AS builder
+COPY requirements-train.txt requirements-serve.txt /tmp/
+RUN python -m venv /opt/venv \
+    && /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements-serve.txt
+
+FROM base AS runtime
+ARG GIT_COMMIT=unknown
+LABEL org.opencontainers.image.source="https://github.com/nojusbuc/mlops-u1" \
+      org.opencontainers.image.revision="$GIT_COMMIT"
+ENV GIT_COMMIT=$GIT_COMMIT \
+    PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+COPY src/serve/ ./serve/
+RUN useradd --create-home --uid 1000 mluser
+USER 1000
+EXPOSE 8000
+CMD ["uvicorn", "serve.app:app", "--host", "0.0.0.0", "--port", "8000"]
