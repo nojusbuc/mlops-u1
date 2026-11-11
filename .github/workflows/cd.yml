@@ -1,0 +1,62 @@
+name: cd
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: self-hosted
+    env:
+      MLFLOW_TRACKING_URI: http://127.0.0.1:5050
+      MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+      MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+      DVC_STORE: /Users/nojus/Documents/studies/mlslop/mlops-u1-dvcstore
+      MANIFEST: k8s/serving/deployment-inference.yaml
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: install
+        run: |
+          uv venv
+          uv pip install -r requirements.txt
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
+      - name: tests
+        run: pytest
+
+      - name: train (dvc repro)
+        run: |
+          dvc remote modify --local localremote url "$DVC_STORE"
+          dvc pull data/raw.dvc
+          dvc repro
+
+      - name: quality gate
+        run: python scripts/quality_gate.py
+
+      - name: promote to champion
+        run: |
+          python scripts/promote.py | tee promote.txt
+          echo "VERSION=$(awk '{print $4}' promote.txt)" >> "$GITHUB_ENV"
+
+      - name: update manifest
+        run: |
+          SHA=$(git rev-parse --short=8 HEAD)
+          sed -i '' "s|serve:sha-.*|serve:sha-$SHA|" "$MANIFEST"
+          sed -i '' "s|model-version: .*|model-version: \"$VERSION\"|" "$MANIFEST"
+          cat "$MANIFEST"
+
+      - name: deploy
+        run: |
+          kubectl apply -f k8s/serving/
+          kubectl -n mlops-u1 rollout status deployment/inference --timeout=300s
+
+      - name: smoke test
+        run: kubectl -n mlops-u1 exec deployment/inference -- python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"

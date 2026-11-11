@@ -194,6 +194,27 @@ pytest
 
 Testai MLflow nereikia: API testas vietoj `load_champion` naudoja netikrą modelį. Mokymo vaizdas CI nebuild'inamas, nes jame yra `data/processed/`, kurių nėra Git'e (DVC remote lokalus), todėl jis publikuojamas su `bash scripts/publish.sh`.
 
+### 11. CD ir rollback
+
+`.github/workflows/cd.yml` pasileidžia, kai `ci` sėkmingai baigiasi po push'o į `main` (arba ranka: Actions → cd → Run workflow). Vyksta self-hosted runner'yje šiame kompiuteryje, nes tik jis pasiekia kind klasterį, MLflow ir DVC duomenis:
+
+1. `pytest`
+2. `dvc pull data/raw.dvc` → `dvc repro` (naujas run'as ir modelio versija MLflow)
+3. `python scripts/quality_gate.py`: `metrics.json` `accuracy` ≥ `params.yaml` `gate.min_accuracy`, kitaip workflow raudonas ir toliau nevykdoma
+4. `python scripts/promote.py` → `@champion` = nauja versija
+5. Manifeste atnaujinamas vaizdo tag'as `sha-<commit>` ir anotacija `model-version`
+6. `kubectl apply -f k8s/serving/` → `rollout status` → `/health` patikra
+
+Reikia: runner'is paleistas (`cd ~/actions-runner && ./run.sh`) ir repo secret'ai `MLFLOW_TRACKING_USERNAME`, `MLFLOW_TRACKING_PASSWORD` (Settings → Secrets and variables → Actions).
+
+Rollback į ankstesnę modelio versiją:
+
+```sh
+python scripts/promote.py --version <ankstesnė versija>
+kubectl -n mlops-u1 rollout restart deployment/inference
+kubectl -n mlops-u1 rollout status deployment/inference
+```
+
 ## Išvalymas ir persikrovimas
 
 ```sh

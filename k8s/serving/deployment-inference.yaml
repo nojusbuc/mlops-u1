@@ -12,6 +12,8 @@ spec:
     metadata:
       labels:
         app: inference
+      annotations:
+        model-version: "1"
     spec:
       securityContext:
         runAsNonRoot: true

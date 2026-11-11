@@ -6,3 +6,6 @@ train:
   max_features: 50000
   ngram_max: 2
   random_seed: 42
+
+gate:
+  min_accuracy: 0.88
