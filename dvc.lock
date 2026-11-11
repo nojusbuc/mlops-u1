@@ -35,23 +35,23 @@ stages:
       size: 33269900
     - path: src/train.py
       hash: md5
-      md5: cd572c68450f977b9b64e91cff9d3ff2
-      size: 3555
+      md5: 50e1d302318984eda2345edd44677722
+      size: 4811
     params:
       params.yaml:
         train:
-          C: 1.0
+          C: 20.5
           max_features: 50000
           ngram_max: 2
           random_seed: 42
     outs:
     - path: models/model.pkl
       hash: md5
-      md5: a059f05359cc39c11650c6887a8e73d4
+      md5: 2d62ebeb855542a3bf848801b4ced487
       size: 2348273
     - path: models/run_id.txt
       hash: md5
-      md5: c9e458463103e555fd7a55216501ae6c
+      md5: 9fe2fad69de361701f4d61ced42318ef
       size: 33
   evaluate:
     cmd: python src/eval.py
@@ -62,11 +62,11 @@ stages:
       size: 8302528
     - path: models/model.pkl
       hash: md5
-      md5: a059f05359cc39c11650c6887a8e73d4
+      md5: 2d62ebeb855542a3bf848801b4ced487
       size: 2348273
     - path: models/run_id.txt
       hash: md5
-      md5: c9e458463103e555fd7a55216501ae6c
+      md5: 9fe2fad69de361701f4d61ced42318ef
       size: 33
     - path: src/eval.py
       hash: md5
@@ -75,5 +75,5 @@ stages:
     outs:
     - path: metrics.json
       hash: md5
-      md5: 550695f7f95fdaabd360b04b743471ba
+      md5: 157c56f5ed017736713a01f8be629c4a
       size: 131
