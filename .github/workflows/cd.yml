@@ -26,7 +26,7 @@ jobs:
       - name: install
         run: |
           uv venv
-          uv pip install -r requirements.txt
+          uv pip install --python .venv/bin/python -r requirements.txt
           echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: tests
