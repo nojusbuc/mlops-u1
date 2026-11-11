@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inference-config
+  namespace: mlops-u1
+data:
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MODEL_NAME: imdb-sentiment
+  MODEL_ALIAS: champion
