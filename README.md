@@ -181,6 +181,19 @@ Modelis užkraunamas tik paleidžiant, todėl pakeitus `@champion` API reikia pe
 
 Apkrovos testas (port-forward turi veikti): `python scripts/load_test.py`. Rezultatai: [docs/load-test.md](docs/load-test.md).
 
+### 10. CI
+
+`.github/workflows/ci.yml` (GitHub Actions) kiekvienam push'ui į `main`: `ruff check` → `pytest` → inferencijos vaizdas (amd64 + arm64) į `ghcr.io/nojusbuc/mlops-u1/serve:sha-<commit>`. Build'as vyksta tik jei lint ir testai praėjo; pull request'uose tik lint ir testai.
+
+Tie patys patikrinimai lokaliai:
+
+```sh
+ruff check src scripts tests reproduce.py
+pytest
+```
+
+Testai MLflow nereikia: API testas vietoj `load_champion` naudoja netikrą modelį. Mokymo vaizdas CI nebuild'inamas, nes jame yra `data/processed/`, kurių nėra Git'e (DVC remote lokalus), todėl jis publikuojamas su `bash scripts/publish.sh`.
+
 ## Išvalymas ir persikrovimas
 
 ```sh
