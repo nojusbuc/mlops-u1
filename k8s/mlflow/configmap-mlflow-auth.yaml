@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mlflow-auth-config
+  namespace: mlops-u1
+data:
+  basic_auth.ini: |
+    [mlflow]
+    default_permission = READ
+    database_uri = postgresql://mlflow@postgres:5432/mlflow
+    authorization_function = mlflow.server.auth:authenticate_request_basic_auth

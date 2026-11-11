@@ -19,48 +19,68 @@ spec:
     spec:
       containers:
         - name: mlflow
-          # -full vaizde yra psycopg2 (Postgres tvarkyklė)
           image: ghcr.io/mlflow/mlflow:v3.17.2-full
           command: ["mlflow"]
           args:
             - server
-            # Slaptažodis ne URI, o PGPASSWORD kintamajame
+            - --app-name=basic-auth
             - --backend-store-uri=postgresql://$(POSTGRES_USER)@postgres:5432/$(POSTGRES_DB)
-            # Artefaktai PVC, klientai juos siunčia per serverį (proxied artifacts)
             - --artifacts-destination=/mlartifacts
             - --host=0.0.0.0
             - --port=5000
             - --workers=1
-            # MLflow 3.x atmeta užklausas su nežinomu Host antraštės pavadinimu
             - --allowed-hosts=localhost:*,127.0.0.1:*,host.docker.internal:*,mlflow:5000,mlflow.mlops-u1.svc:5000
           ports:
             - containerPort: 5000
           env:
             - name: POSTGRES_USER
               valueFrom:
-                secretKeyRef: {name: postgres-credentials, key: POSTGRES_USER}
+                secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER }
             - name: POSTGRES_DB
               valueFrom:
-                secretKeyRef: {name: postgres-credentials, key: POSTGRES_DB}
+                secretKeyRef: { name: postgres-credentials, key: POSTGRES_DB }
             - name: PGPASSWORD
               valueFrom:
-                secretKeyRef: {name: postgres-credentials, key: POSTGRES_PASSWORD}
+                secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD }
+            - name: MLFLOW_AUTH_CONFIG_PATH
+              value: /auth/basic_auth.ini
+            - name: MLFLOW_AUTH_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  { name: mlflow-credentials, key: MLFLOW_TRACKING_USERNAME }
+            - name: MLFLOW_AUTH_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  { name: mlflow-credentials, key: MLFLOW_TRACKING_PASSWORD }
+            - name: MLFLOW_FLASK_SERVER_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  {
+                    name: mlflow-credentials,
+                    key: MLFLOW_FLASK_SERVER_SECRET_KEY,
+                  }
           volumeMounts:
             - name: artifacts
               mountPath: /mlartifacts
+            - name: auth-config
+              mountPath: /auth
+              readOnly: true
           readinessProbe:
-            httpGet: {path: /health, port: 5000}
+            httpGet: { path: /health, port: 5000 }
             initialDelaySeconds: 10
             periodSeconds: 5
           livenessProbe:
-            httpGet: {path: /health, port: 5000}
+            httpGet: { path: /health, port: 5000 }
             initialDelaySeconds: 60
             periodSeconds: 10
             failureThreshold: 6
           resources:
-            requests: {cpu: 250m, memory: 1Gi}
-            limits: {cpu: "1", memory: 3Gi}
+            requests: { cpu: 250m, memory: 1Gi }
+            limits: { cpu: "1", memory: 3Gi }
       volumes:
         - name: artifacts
           persistentVolumeClaim:
             claimName: mlflow-artifacts
+        - name: auth-config
+          configMap:
+            name: mlflow-auth-config

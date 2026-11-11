@@ -7,6 +7,6 @@ data:
   # Klasterio viduje MLflow pasiekiamas per Service vardą
   MLFLOW_TRACKING_URI: http://mlflow:5000
   MLFLOW_EXPERIMENT_NAME: imdb-sentiment
-  C: "1.0"
+  C: "20.5"
   MAX_FEATURES: "50000"
   NGRAM_MAX: "2"

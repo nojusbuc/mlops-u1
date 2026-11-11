@@ -4,7 +4,7 @@ Atkartojamas DVC pipeline'as (`prepare → train → evaluate`) ir savas MLflow 
 Modelis: TF-IDF + logistinė regresija, duomenys `stanfordnlp/imdb`. Išbandyta macOS 26 (Apple Silicon, Docker Desktop).
 
 - **Portai:** MLflow UI ir API http://127.0.0.1:5050 (kind NodePort 30500, tik `127.0.0.1`). Postgres tik klasterio viduje (`postgres:5432`).
-- **Prisijungimai:** MLflow be prisijungimo. Postgres naudotojas ir atsitiktinis slaptažodis tik Kubernetes Secret `postgres-credentials` (sukuriamas 2 žingsnyje, Git'e jų nėra).
+- **Prisijungimai:** MLflow su basic auth (naudotojas `admin`). MLflow ir Postgres slaptažodžiai tik Kubernetes Secret'uose `mlflow-credentials` ir `postgres-credentials` (sukuriami 2 žingsnyje, Git'e jų nėra).
 - **Rezultatai:** MLflow eksperimentas `imdb-sentiment`; `metrics.json` (`dvc metrics show`); KPI ir išmatuotos reikšmės `docs/requirements.md`; vaizdas ir Trivy `docs/docker-image.md`.
 
 ## Reikalavimai
@@ -45,12 +45,24 @@ kubectl apply -f k8s/namespace.yaml
 kubectl -n mlops-u1 create secret generic postgres-credentials \
   --from-literal=POSTGRES_USER=mlflow --from-literal=POSTGRES_DB=mlflow \
   --from-literal=POSTGRES_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+kubectl -n mlops-u1 create secret generic mlflow-credentials \
+  --from-literal=MLFLOW_TRACKING_USERNAME=admin \
+  --from-literal=MLFLOW_TRACKING_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_hex(16))')" \
+  --from-literal=MLFLOW_FLASK_SERVER_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
 kubectl apply -k k8s/
 kubectl -n mlops-u1 rollout status deploy/mlflow --timeout=300s
 curl -sf http://127.0.0.1:5050/health; echo
 ```
 
-UI: http://127.0.0.1:5050.
+MLflow klientas prisijungimus ima iš aplinkos kintamųjų. Kiekviename naujame terminale:
+
+```sh
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5050
+export MLFLOW_TRACKING_USERNAME=admin
+export MLFLOW_TRACKING_PASSWORD=$(kubectl -n mlops-u1 get secret mlflow-credentials -o jsonpath='{.data.MLFLOW_TRACKING_PASSWORD}' | base64 -d)
+```
+
+UI: http://127.0.0.1:5050 (naudotojas `admin`, slaptažodis `echo $MLFLOW_TRACKING_PASSWORD`).
 
 ### 3. Duomenys
 
@@ -118,7 +130,8 @@ Publikuotas vaizdas (amd64 + arm64) pasileidžia be build'o ir log'ina run'ą į
 Vaizde tik mokymas (`train.py`), todėl tokio run'o metrikų nėra; jas skaičiuoja `evaluate` stage'as.
 
 ```sh
-docker run --rm -e MLFLOW_TRACKING_URI=http://host.docker.internal:5050 ghcr.io/nojusbuc/mlops-u1/train:<sha-tag iš docs/docker-image.md>
+docker run --rm -e MLFLOW_TRACKING_URI=http://host.docker.internal:5050 \
+  -e MLFLOW_TRACKING_USERNAME -e MLFLOW_TRACKING_PASSWORD ghcr.io/nojusbuc/mlops-u1/train:<sha-tag iš docs/docker-image.md>
 ```
 
 Savas vaizdas, Trivy ir publikavimas į GHCR (reikia `gh auth refresh -h github.com -s write:packages,read:packages`):
@@ -135,7 +148,7 @@ bash scripts/publish.sh
 
 ### 8. Mokymas kaip Kubernetes Job
 
-ConfigMap `training-config` duoda Job'ui MLflow adresą `http://mlflow:5000` (Service vardas klasteryje) ir hiperparametrus.
+ConfigMap `training-config` duoda Job'ui MLflow adresą `http://mlflow:5000` (Service vardas klasteryje) ir hiperparametrus, Secret `mlflow-credentials` duoda MLflow naudotoją ir slaptažodį.
 
 ```sh
 kubectl -n mlops-u1 delete job train --ignore-not-found
@@ -160,6 +173,7 @@ Po kompiuterio perkrovimo: `docker start mlops-u1-control-plane`, po minutės Po
 | Klaida                                           | Priežastis ir sprendimas                                                                                                                                         |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MLFLOW_TRACKING_URI is not set`                 | Šiame terminale: `export MLFLOW_TRACKING_URI=http://127.0.0.1:5050`                                                                                              |
+| `401 Unauthorized` iš MLflow                     | Šiame terminale neeksportuoti `MLFLOW_TRACKING_USERNAME` ir `MLFLOW_TRACKING_PASSWORD` (žr. 2 žingsnį)                                                          |
 | `curl 127.0.0.1:5050` atmeta ryšį                | MLflow Pod'as dar kyla (`kubectl -n mlops-u1 get pods`), arba klasteris sukurtas ne su `k8s/kind-config.yaml` (portų susiejimas nustatomas tik kuriant klasterį) |
 | `port is already allocated` kuriant klasterį     | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml` ir `MLFLOW_TRACKING_URI`                                                                              |
 | `403` / `Invalid Host header` iš MLflow          | Kliento host'o nėra `--allowed-hosts` sąraše `k8s/mlflow/deployment-mlflow.yaml`                                                                                 |

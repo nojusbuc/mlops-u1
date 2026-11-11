@@ -6,5 +6,6 @@ resources:
   - mlflow/deployment-postgres.yaml
   - mlflow/service-postgres.yaml
   - mlflow/pvc-mlflow.yaml
+  - mlflow/configmap-mlflow-auth.yaml
   - mlflow/deployment-mlflow.yaml
   - mlflow/service-mlflow.yaml
