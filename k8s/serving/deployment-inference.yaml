@@ -18,7 +18,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: inference
-          image: ghcr.io/nojusbuc/mlops-u1/serve:sha-CHANGE_ME
+          image: ghcr.io/nojusbuc/mlops-u1/serve:sha-1418dd44
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
