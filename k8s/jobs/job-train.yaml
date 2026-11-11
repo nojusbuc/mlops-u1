@@ -16,19 +16,28 @@ spec:
         runAsUser: 1000
       containers:
         - name: train
-          image: ghcr.io/nojusbuc/mlops-u1/train:sha-5890ce7d
+          image: ghcr.io/nojusbuc/mlops-u1/train:sha-d029f527
           imagePullPolicy: IfNotPresent
-          args: ["python", "src/train.py", "--C=$(C)", "--max_features=$(MAX_FEATURES)", "--ngram_max=$(NGRAM_MAX)"]
+          args:
+            [
+              "python",
+              "src/train.py",
+              "--C=$(C)",
+              "--max_features=$(MAX_FEATURES)",
+              "--ngram_max=$(NGRAM_MAX)",
+            ]
           envFrom:
             - configMapRef:
                 name: training-config
           env:
             - name: MLFLOW_TRACKING_USERNAME
               valueFrom:
-                secretKeyRef: {name: mlflow-credentials, key: MLFLOW_TRACKING_USERNAME}
+                secretKeyRef:
+                  { name: mlflow-credentials, key: MLFLOW_TRACKING_USERNAME }
             - name: MLFLOW_TRACKING_PASSWORD
               valueFrom:
-                secretKeyRef: {name: mlflow-credentials, key: MLFLOW_TRACKING_PASSWORD}
+                secretKeyRef:
+                  { name: mlflow-credentials, key: MLFLOW_TRACKING_PASSWORD }
           resources:
-            requests: {cpu: 500m, memory: 1Gi}
-            limits: {cpu: "2", memory: 2Gi}
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { cpu: "2", memory: 2Gi }

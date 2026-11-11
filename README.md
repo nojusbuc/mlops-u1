@@ -173,7 +173,7 @@ Po kompiuterio perkrovimo: `docker start mlops-u1-control-plane`, po minutės Po
 | Klaida                                           | Priežastis ir sprendimas                                                                                                                                         |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MLFLOW_TRACKING_URI is not set`                 | Šiame terminale: `export MLFLOW_TRACKING_URI=http://127.0.0.1:5050`                                                                                              |
-| `401 Unauthorized` iš MLflow                     | Šiame terminale neeksportuoti `MLFLOW_TRACKING_USERNAME` ir `MLFLOW_TRACKING_PASSWORD` (žr. 2 žingsnį)                                                          |
+| `401 Unauthorized` iš MLflow                     | Šiame terminale neeksportuoti `MLFLOW_TRACKING_USERNAME` ir `MLFLOW_TRACKING_PASSWORD` (žr. 2 žingsnį)                                                           |
 | `curl 127.0.0.1:5050` atmeta ryšį                | MLflow Pod'as dar kyla (`kubectl -n mlops-u1 get pods`), arba klasteris sukurtas ne su `k8s/kind-config.yaml` (portų susiejimas nustatomas tik kuriant klasterį) |
 | `port is already allocated` kuriant klasterį     | 5050 užimtas: pakeiskite `hostPort` `k8s/kind-config.yaml` ir `MLFLOW_TRACKING_URI`                                                                              |
 | `403` / `Invalid Host header` iš MLflow          | Kliento host'o nėra `--allowed-hosts` sąraše `k8s/mlflow/deployment-mlflow.yaml`                                                                                 |
@@ -193,3 +193,7 @@ metric screenshots:
 ![alt text](image-1.png)
 
 ![alt text](image-2.png)
+
+![alt text](image-3.png)
+
+![alt text](image-4.png)
