@@ -13,9 +13,14 @@ import yaml
 from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
 ROOT = Path(__file__).resolve().parents[1]
+
+LEARNING_CURVE_FRACTIONS = (0.2, 0.4, 0.6, 0.8, 1.0)
+VAL_SIZE = 0.1
 
 
 def git(*args: str) -> str:
@@ -40,6 +45,38 @@ def dvc_md5(dvc_file: Path) -> str:
         return "untracked"
 
 
+def build_model(params: dict) -> Pipeline:
+    return Pipeline([
+        ("tfidf", ColumnTransformer([
+            ("text", TfidfVectorizer(
+                max_features=params["max_features"],
+                ngram_range=(1, params["ngram_max"]),
+                sublinear_tf=True,
+            ), "text"),
+        ])),
+        ("clf", LogisticRegression(
+            C=params["C"], max_iter=1000, random_state=params["random_seed"],
+        )),
+    ])
+
+
+def log_learning_curve(params: dict, train: pd.DataFrame) -> None:
+    train_data, val_data = train_test_split(
+        train, test_size=VAL_SIZE, stratify=train["label"], random_state=params["random_seed"],
+    )
+    for step, fraction in enumerate(LEARNING_CURVE_FRACTIONS, start=1):
+        subset = train_data.sample(frac=fraction, random_state=params["random_seed"])
+        model = build_model(params).fit(subset[["text"]], subset["label"])
+        preds = model.predict(val_data[["text"]])
+        val_accuracy = accuracy_score(val_data["label"], preds)
+        mlflow.log_metrics({
+            "train_size": len(subset),
+            "val_accuracy": val_accuracy,
+            "val_f1": f1_score(val_data["label"], preds),
+        }, step=step)
+        print(f"step={step} train_size={len(subset)} val_accuracy={val_accuracy:.4f}")
+
+
 def main() -> None:
     if not os.environ.get("MLFLOW_TRACKING_URI"):
         sys.exit("MLFLOW_TRACKING_URI is not set. Point it at the cluster MLflow, e.g. http://127.0.0.1:5050")
@@ -55,36 +92,28 @@ def main() -> None:
             params[key] = value
 
     mlflow.set_experiment(os.environ.get("MLFLOW_EXPERIMENT_NAME", "imdb-sentiment"))
+    mlflow.set_system_metrics_sampling_interval(1)
     train = pd.read_parquet(ROOT / "data/processed/train.parquet")
-
-    model = Pipeline([
-        ("tfidf", ColumnTransformer([
-            ("text", TfidfVectorizer(
-                max_features=params["max_features"],
-                ngram_range=(1, params["ngram_max"]),
-                sublinear_tf=True,
-            ), "text"),
-        ])),
-        ("clf", LogisticRegression(
-            C=params["C"], max_iter=1000, random_state=params["random_seed"],
-        )),
-    ])
 
     commit, dirty = git_info()
     run_name = f"tfidf-lr-C{params['C']}-ng{params['ngram_max']}"
-    with mlflow.start_run(run_name=run_name) as run:
+    with mlflow.start_run(run_name=run_name, log_system_metrics=True) as run:
         mlflow.log_params(params)
         mlflow.set_tags({
             "git_commit": commit,
             "git_dirty": dirty,
             "dvc_raw_md5": dvc_md5(ROOT / "data/raw.dvc"),
             "model_family": "tfidf-logreg",
+            "seed": params["random_seed"],
         })
         mlflow.log_input(
             mlflow.data.from_pandas(train, source="data/processed/train.parquet", targets="label", name="imdb-train"),
             context="training",
         )
 
+        log_learning_curve(params, train)
+
+        model = build_model(params)
         model.fit(train[["text"]], train["label"])
 
         sample = train[["text"]].head(5)
