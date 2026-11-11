@@ -123,6 +123,7 @@ def main() -> None:
             signature=infer_signature(sample, model.predict(sample)),
             pip_requirements=str(ROOT / "requirements-train.txt"),
             serialization_format="cloudpickle",
+            registered_model_name="imdb-sentiment",
         )
         (ROOT / "models").mkdir(exist_ok=True)
         joblib.dump(model, ROOT / "models/model.pkl")
