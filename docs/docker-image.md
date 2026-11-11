@@ -1,13 +1,13 @@
 # Mokymo Docker vaizdas
 
-|            |                                                                           |
-| ---------- | ------------------------------------------------------------------------- |
-| Vaizdas    | `ghcr.io/nojusbuc/mlops-u1/train:sha-d029f527` (viešas)                   |
-| Commit     | `5890ce7d`                                                                |
-| Digest     | `sha256:9c11968e4594b6d193eee89fd67875b44c7e6a853c24798960b88894e4f5e7ce` |
-| Platformos | linux/amd64, linux/arm64                                                  |
-| Bazė       | `python:3.12.15-slim-trixie` (Debian 13)                                  |
-| Dockerfile | [`docker/Dockerfile.train`](../docker/Dockerfile.train)                   |
+| | |
+| --- | --- |
+| Vaizdas | `ghcr.io/nojusbuc/mlops-u1/train:sha-d029f527` (viešas) |
+| Commit | `d029f527` |
+| Digest | `sha256:ea930dbd0e505472e1f909330220ff468d6fb1ace45d498ed81d4a5762d5b18e` |
+| Platformos | linux/amd64, linux/arm64 |
+| Bazė | `python:3.12.15-slim-trixie` (Debian 13) |
+| Dockerfile | [`docker/Dockerfile.train`](../docker/Dockerfile.train) |
 
 Tag'as `sha-<commit>` susieja vaizdą su kodu (`org.opencontainers.image.revision` ir run'o `git_commit` sutampa), digest'as fiksuoja turinį. `latest` nenaudojamas: jis keičiasi, nerodo commit'o ir neleidžia atkurti, kas tiksliai buvo paleista.
 
@@ -15,12 +15,12 @@ Tag'as `sha-<commit>` susieja vaizdą su kodu (`org.opencontainers.image.revisio
 
 Matuota vaizdui `sha-5890ce7d` (arm64) (`du -sh /` konteineryje).
 
-|                                     |                                                                                           |
-| ----------------------------------- | ----------------------------------------------------------------------------------------- |
-| Rootfs (išpakuotas)                 | **818 MB** (NFR-09 riba 1 GB)                                                             |
-| Docker `.Size` (suspaustas turinys) | 264 MB                                                                                    |
-| `/opt/venv`                         | 630 MB: `pyarrow` 142, `scipy` 118, `pandas` 77, `sklearn` 57, `numpy` 40, `mlflow` 39 MB |
-| `/app/data/processed`               | 40 MB (įdėta, nes k8s Job'as nepasiekia lokalaus DVC remote)                              |
+| | |
+| --- | --- |
+| Rootfs (išpakuotas) | **818 MB** (NFR-09 riba 1 GB) |
+| Docker `.Size` (suspaustas turinys) | 264 MB |
+| `/opt/venv` | 630 MB: `pyarrow` 142, `scipy` 118, `pandas` 77, `sklearn` 57, `numpy` 40, `mlflow` 39 MB |
+| `/app/data/processed` | 40 MB (įdėta, nes k8s Job'as nepasiekia lokalaus DVC remote) |
 
 `mlflow-skinny` vietoj pilno `mlflow`: mokymui reikia tik kliento, be serverio ir UI priklausomybių. Multi-stage build: `pip` cache ir build failai nepatenka į galutinį sluoksnį.
 
